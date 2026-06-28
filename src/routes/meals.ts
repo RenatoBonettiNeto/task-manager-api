@@ -41,20 +41,16 @@ export function mealRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get(
-    "/",
-    { preHandler: [checkSessionIdExists] },
-    async (request) => {
-      const { sessionId } = request.cookies;
+  app.get("/", { preHandler: [checkSessionIdExists] }, async (request) => {
+    const { sessionId } = request.cookies;
 
-      const user = await db("user").where("session_id", sessionId).first();
-      const meals = await db("meal").where("user_id", user.id).select();
+    const user = await db("user").where("session_id", sessionId).first();
+    const meals = await db("meal").where("user_id", user.id).select();
 
-      return {
-        meals,
-      };
-    },
-  );
+    return {
+      meals,
+    };
+  });
 
   app.get("/:id", { preHandler: [checkSessionIdExists] }, async (request) => {
     const getMealsParamsSchema = z.object({
@@ -76,7 +72,57 @@ export function mealRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/", {preHandler: [checkSessionIdExists]}, async (request) => {
-    const 
-  })
+  app.get(
+    "/summary",
+    { preHandler: [checkSessionIdExists] },
+    async (request) => {
+      const { sessionId } = request.cookies;
+
+      const user = await db("user").where("session_id", sessionId).first();
+
+      const totalMeals = await db("meal")
+        .where("user_id", user.id)
+        .count({ total: "*" })
+        .first();
+
+      const mealsOnDiet = await db("meal")
+        .where("user_id", user.id)
+        .andWhere("is_on_diet", true)
+        .count({ total: "*" })
+        .first();
+
+      const mealsOffDiet = await db("meal")
+        .where("user_id", user.id)
+        .andWhere("is_on_diet", false)
+        .count({ total: "*" })
+        .first();
+
+      const mealsBestSequence = await db("meal")
+        .where("user_id", user.id)
+        .orderBy("date", "asc");
+
+      let currentSequence = 0;
+      let bestSequence = 0;
+
+      for (const meal of mealsBestSequence) {
+        if (meal.is_on_diet) {
+          currentSequence++;
+
+          if (currentSequence > bestSequence) {
+            bestSequence = currentSequence;
+          }
+        } else {
+          currentSequence = 0;
+        }
+      }
+
+      return {
+        totalMeals: Number(totalMeals?.total),
+        mealsOnDiet: Number(mealsOnDiet?.total),
+        mealsOffDiet: Number(mealsOffDiet?.total),
+        bestDietSequence: bestSequence,
+
+      };
+    },
+  );
 }
