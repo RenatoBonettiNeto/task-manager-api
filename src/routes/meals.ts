@@ -40,4 +40,43 @@ export function mealRoutes(app: FastifyInstance) {
       return reply.status(201).send();
     },
   );
+
+  app.get(
+    "/",
+    { preHandler: [checkSessionIdExists] },
+    async (request) => {
+      const { sessionId } = request.cookies;
+
+      const user = await db("user").where("session_id", sessionId).first();
+      const meals = await db("meal").where("user_id", user.id).select();
+
+      return {
+        meals,
+      };
+    },
+  );
+
+  app.get("/:id", { preHandler: [checkSessionIdExists] }, async (request) => {
+    const getMealsParamsSchema = z.object({
+      id: z.string().uuid(),
+    });
+
+    const { id } = getMealsParamsSchema.parse(request.params);
+
+    const { sessionId } = request.cookies;
+
+    const user = await db("user").where("session_id", sessionId).first();
+    const meal = await db("meal")
+      .where("user_id", user.id)
+      .andWhere("id", id)
+      .first();
+
+    return {
+      meal,
+    };
+  });
+
+  app.get("/", {preHandler: [checkSessionIdExists]}, async (request) => {
+    const 
+  })
 }
